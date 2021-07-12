@@ -1,3 +1,5 @@
 # Scraping lib
 
-- Actions (click, send keys, hover, 
+- Browser configurators
+- Crawlers
+- 
