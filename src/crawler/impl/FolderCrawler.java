@@ -35,14 +35,4 @@ public class FolderCrawler extends Crawler<String> {
 			return new FolderCrawler(getContext(), getMaxDepth(), getStrategy());
 		}
 	}
-	
-	public static void main(String[] args) throws Exception {
-		int maxDepth = 3;
-		FolderCrawler crawler = new Builder()
-				.asContext(context -> context.push("D:\\Desktop"))
-				.setMaxDepth(maxDepth)
-				.setStrategy(Strategy.DEPTH_FIRST)
-				.build();
-		crawler.crawl();
-	}
 }

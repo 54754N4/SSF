@@ -1,8 +1,5 @@
 package crawler.impl;
 
-import java.util.concurrent.ExecutionException;
-
-import ads.common.Utils;
 import crawler.CrawlContext;
 import crawler.Crawler;
 import crawler.Crawler.Strategy;
@@ -27,17 +24,6 @@ public class MultiFolderCrawler extends MultiCrawler<String> {
 		@Override
 		public MultiFolderCrawler build() {
 			return new MultiFolderCrawler(getContext(), getMaxDepth(), getStrategy(), getMaxThreads());
-		}
-	}
-
-	public static void main(String[] args) throws InterruptedException, ExecutionException {
-		int maxDepth = 4;
-		CrawlContext<String> context = CrawlContext.<String>create()
-			.push("D:\\Desktop");
-		try (MultiFolderCrawler crawler = new MultiFolderCrawler(context, maxDepth, Strategy.BREADTH_FIRST)) {
-			long duration = System.currentTimeMillis();
-			crawler.crawl();
-			System.out.println(Utils.Time.fromMillis(System.currentTimeMillis() - duration));
 		}
 	}
 }

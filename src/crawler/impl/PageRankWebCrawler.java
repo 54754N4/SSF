@@ -12,6 +12,7 @@ import crawler.CrawlContext;
 import crawler.WebCrawler;
 
 public class PageRankWebCrawler extends WebCrawler {
+	public static int DEFAULT_OPTIMISATIONS = 100;
 	private int optimisations;
 	private PageRank pageRank;
 	private long duration;
@@ -64,19 +65,26 @@ public class PageRankWebCrawler extends WebCrawler {
 		System.out.printf("Finished after %s%n", Time.fromMillis(duration));
 	}
 	
-	public static void main(String[] args) throws Exception {
-		CrawlContext<String> context = CrawlContext.<String>create()
-			.push(
-				"http://www.runescape.com",
-				"http://www.google.com"
-			).blacklist(
-				"*.guinnessworldrecords.*",
-				"*.bytedance.com",
-				"*.tiktok.com"
-			);
-		int maxDepth = 2, optimisationCycles = 100;
-		try (PageRankWebCrawler crawler = new PageRankWebCrawler(context, maxDepth, optimisationCycles)) {
-			crawler.crawl();
+	public static class Builder extends WebCrawler.Builder<PageRankWebCrawler> {
+		private int optimisations;
+		
+		public Builder() {
+			super();
+			optimisations = DEFAULT_OPTIMISATIONS;
+		}
+		
+		public Builder setOptimisations(int optimisations) {
+			this.optimisations = optimisations;
+			return this;
+		}
+		
+		public int getOptimisations() {
+			return optimisations;
+		}
+		
+		@Override
+		public PageRankWebCrawler build() {
+			return new PageRankWebCrawler(getContext(), getMaxDepth(), getStrategy(), getOptimisations());
 		}
 	}
 }
