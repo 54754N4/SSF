@@ -1,21 +1,12 @@
 package crawler;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
-import browser.common.Constants;
+import crawler.CrawlContext.Match;
 
 /**
  * A Crawler is a thread that can search, up to a specified depth, 
@@ -24,60 +15,26 @@ import browser.common.Constants;
  * 
  * @param <Uri> - anything that can be retrieved by crawling 
  */
-public abstract class Crawler<Uri> implements Callable<Void> {
-	
+public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 	/* Constants */
-	
-	public static final int DEFAULT_MAX_DEPTH = 1;
-	public static final Map<String, String> PATTERN_2_REGEX_RULES;
-	public static final String 
-		DOT = "\\.", DOT_ESCAPED = "\\\\.",
-		ANY = "\\*", ANY_REGEX = ".*",
-		ANY_CHAR = "\\?", ANY_CHAR_REGEX = ".";
 	public static enum Strategy { BREADTH_FIRST, DEPTH_FIRST }
-	
-	static {
-		PATTERN_2_REGEX_RULES = new ConcurrentHashMap<>();
-		PATTERN_2_REGEX_RULES.put(DOT, DOT_ESCAPED);
-		PATTERN_2_REGEX_RULES.put(ANY, ANY_REGEX);
-		PATTERN_2_REGEX_RULES.put(ANY_CHAR, ANY_CHAR_REGEX);
-	}
-	
+	public static final int DEFAULT_MAX_DEPTH = 1;
+	public static final String 
+		PRE_PHASE = "preCrawl",
+		CRAWL_PHASE = "crawl",
+		POST_PHASE = "postCrawl";
+
 	/* Attributes */
-	
 	protected final int maxDepth;
 	protected final Strategy strategy;
-	protected final List<String> blacklist;
-	protected final Set<Uri> visited;
-	protected final List<Uri> uris;
-	private Predicate<Uri> filter;
+	protected final CrawlContext<Uri> context;
 	
-	// used internally 
-	
-	private AtomicInteger count;
-	private ReadWriteLock lock;
-	private Lock write, read;
-	
-	public Crawler() {
-		this(DEFAULT_MAX_DEPTH);
-	}
-	
-	public Crawler(int maxDepth) {
-		this(maxDepth, Strategy.BREADTH_FIRST);
-	}
-	
-	public Crawler(int maxDepth, Strategy strategy) {
+	public Crawler(CrawlContext<Uri> context, int maxDepth, Strategy strategy) {
 		if (maxDepth < 0)
 			throw new IllegalArgumentException("Max depth can only be strict positive integers");
+		this.context = context;
 		this.maxDepth = maxDepth;
 		this.strategy = strategy;
-		uris = new ArrayList<>();
-		visited = new HashSet<>();
-		blacklist = new ArrayList<>();
-		filter = uri -> true;
-		lock = new ReentrantReadWriteLock();
-		write = lock.writeLock();
-		read = lock.readLock();
 	}
 	
 	/**
@@ -89,224 +46,147 @@ public abstract class Crawler<Uri> implements Callable<Void> {
 	/* Lifecycle hooks */
 	
 	protected void preCrawl() throws Exception {
-		if (Constants.DEBUG) 
-			System.out.printf("Starting crawl with max depth of %d%n", maxDepth);
-	}
-
-	protected boolean wasVisited(Uri uri) {
-		return synchronizedContains(visited, uri);	// by default check current set
+		logln("Starting crawl with %s of %d", strategy == Strategy.DEPTH_FIRST ? "max depth":"breadth", maxDepth);
 	}
 	
-	protected void onVisit(Uri uri) throws Exception {
-		if (Constants.DEBUG) 
-			System.out.printf(
-					"Visiting %d/%d: %s%n", 
-					count.get(),
-					uris.size(),  
-					uri);
-	}
+	protected void onVisit(Uri uri) throws Exception {}
 	
 	protected void postCrawl() throws Exception {
-		if (Constants.DEBUG) 
-			System.out.println("Finished crawling.");
-	}
-
-	/* Accessors */
-	
-	public int getMaxDepth() {
-		return maxDepth;
-	}
-
-	public Set<Uri> getVisited() {
-		return visited;
+		logln("Finished crawling.");
 	}
 	
-	/* Thread code */
+	/* Crawling methods */
+	
+	public Crawler<Uri> crawl() throws Exception {
+		preCrawl();
+		executeStrategy();
+		postCrawl();
+		return this;
+	}
+	
+	public Crawler<Uri> safeCrawl(BiConsumer<String, Throwable> onError) {
+		try { preCrawl(); } 
+		catch (Exception e) { onError.accept(PRE_PHASE, e); }
+		try { executeStrategy(); } 
+		catch (Exception e) { onError.accept(CRAWL_PHASE, e); }
+		try { postCrawl(); }
+		catch (Exception e) { onError.accept(POST_PHASE, e); }
+		return this;
+	}
 	
 	@Override
 	public Void call() throws Exception {
-		preCrawl();
-		switch (strategy) {
-			case BREADTH_FIRST: breadthFirst(); break;
-			case DEPTH_FIRST: depthFirst(); break;
-			default: throw new IllegalArgumentException("Strategy not implemented or mapped yet.");
-		}
-		postCrawl();
+		crawl();
 		return null;
 	}
 	
-	/* Adding uris */
-	
-	public Crawler<Uri> push(Uri uri) {
-		if (!wasVisited(uri))	// prevent re-crawling same targets
-			synchronizedWrite(uris, uri);
-		return this;
-	}
-	
-	public Crawler<Uri> push(Collection<Uri> uris) {
-		for (Uri uri : uris)
-			push(uri);
-		return this;
-	}
-	
-	/* Adding blacklist */
-		
-	public static String sanitize(String pattern) {
-		for (Map.Entry<String, String> entry : PATTERN_2_REGEX_RULES.entrySet())
-			pattern = pattern.replaceAll(entry.getKey(), entry.getValue());
-		return pattern;
-	} 
-	
-	public Crawler<Uri> blacklist(String pattern) {
-		blacklist.add(sanitize(pattern));
-		return this;
-	}
-	
-	public Crawler<Uri> blacklist(Collection<String> patterns) {
-		for (String pattern : patterns)
-			blacklist(pattern);
-		return this;
-	}
-	
-	public Crawler<Uri> unblacklist(String pattern) {
-		blacklist.remove(pattern);
-		return this;
-	}
-	
-	public Crawler<Uri> unblacklist(Collection<String> patterns) {
-		for (String pattern : patterns)
-			unblacklist(pattern);
-		return this;
-	}
-	
-	protected boolean isBlacklisted(Uri uri) {
-		for (String regex : blacklist) 
-			if (Pattern.compile(regex)
-					.matcher(uri.toString())
-					.find())
-				return true;
-		return false;
-	}
-	
-	/* Uri filtering methods */
-	
-	public Crawler<Uri> filter(Predicate<Uri> predicate) {
-		filter = predicate;
-		return this;
-	}
-	
-	public Crawler<Uri> and(Predicate<Uri> predicate) {
-		filter = filter.and(predicate);
-		return this;
-	}
-	
-	public Crawler<Uri> or(Predicate<Uri> predicate) {
-		filter = filter.or(predicate);
-		return this;
-	}
-	
-	/* Synchronized count handling */
-	
-	protected AtomicInteger resetCounter() {
-		return count = new AtomicInteger(0);
-	}
-	
-	protected int increment() {
-		return count.getAndIncrement();
-	}
-	
-	protected int incrementBy(int by) {
-		return count.getAndAdd(by);
-	}
-	
-	protected int decrement() {
-		return count.getAndDecrement();
-	}
-	
-	protected int decrementBy(int by) {
-		return incrementBy(-by);
-	}
-	
-	/* Synchronized read and write access */
-	
-	protected <T> Crawler<Uri> synchronizedWrite(Collection<T> collection, T element) {
-		write.lock();
-		try { 
-			collection.add(element); 
-		} finally { 
-			write.unlock();
-		}
-		return this;
-	}
-	
-	protected <T> boolean synchronizedContains(Collection<T> collection, T element) {
-		read.lock();
-		try { 
-			return collection.contains(element);
-		} finally { 
-			read.unlock();
-		}
-	}
-	
-	protected <T> T synchronizedRead(List<T> collection, int i) {
-		read.lock();
-		try { 
-			return collection.get(i);
-		} finally { 
-			read.unlock();
-		}
+	private void executeStrategy() throws Exception {
+		StrategyMethod<Uri> strategy = this.strategy == Strategy.BREADTH_FIRST ?
+				this::breadthFirst :
+				this::depthFirst;
+		Match<Uri> match;
+		while ((match = context.uris.poll()) != null)
+			strategy.execute(match);
 	}
 
 	/* Crawling strategies */
 	
-	protected void breadthFirst() throws Exception {
-		int depth = 0;
-		final List<Uri> found = new ArrayList<>();
-		resetCounter();
-		while (!uris.isEmpty() && depth++ < maxDepth) {
-			System.out.printf("Scanning breadth %d%n", depth);
-			// Scan current depth
-			for (Uri uri : uris) {
-				increment();
-				if (isBlacklisted(uri)) {
-					System.out.printf("Ignored: %s (blacklisted)%n", uri);
-					continue;
-				} else if (filter.test(uri) && !wasVisited(uri)) {
-					synchronizedWrite(visited, uri);				// mark as visited
-					onVisit(uri);
-					found.addAll(crawlFrontier(uri));
-				} else 
-					System.out.printf("Ignored: %s (%s)%n", uri, filter.test(uri) ? "pre-visited" : "filtered");
-			}
-			// Update URIs of next depth
-			decrementBy(uris.size());
-			uris.clear();
-			push(found);
-			found.clear();
-		}
-	}
-	
-	protected void depthFirst() throws Exception {
-		resetCounter();
-		depthFirst(0, uris);
-	}
-	
-	private void depthFirst(int depth, final List<Uri> crawlFrontier) throws Exception {
-		if (depth >= maxDepth)
+	protected void breadthFirst(Match<Uri> match) throws Exception {
+		if (!handleMatch(match))
 			return;
-		System.out.printf("Scanning depth %d%n", depth);
-		for (Uri uri : crawlFrontier) {
-			increment();
-			if (isBlacklisted(uri)) {
-				System.out.printf("Ignored : %s (blacklisted)%n", uri);
-				continue;
-			} else if (filter.test(uri) && !wasVisited(uri)) {
-				synchronizedWrite(visited, uri);				// mark as visited
-				onVisit(uri);
-				depthFirst(depth+1, crawlFrontier(uri));
-			} else 
-				System.out.printf("Ignored : %s (filtered|wasVisited)%n");
+		for (Uri child : crawlFrontier(match.getUri()))
+			if (match.getDepth() < maxDepth)
+				context.push(match.getDepth() + 1, child);
+	}
+	
+	protected void depthFirst(Match<Uri> match) throws Exception {
+		if (!handleMatch(match))
+			return;
+		depthFirstPush(match);
+	}
+	
+	private void depthFirstPush(Match<Uri> match) throws Exception {
+		if (match.getDepth() >= maxDepth)
+			return;
+		Iterator<Uri> iterator = crawlFrontier(match.getUri()).iterator();
+		if (!iterator.hasNext())
+			return;
+		Match<Uri> firstChild = Match.of(match.getDepth() + 1, iterator.next());
+		if (!handleMatch(firstChild))
+			return;
+		depthFirstPush(firstChild);
+		iterator.forEachRemaining(child -> context.push(match.getDepth()+1, child));
+	}
+	
+	protected boolean handleMatch(Match<Uri> match) throws Exception {
+		Uri uri = match.getUri();
+		boolean blacklisted = context.isBlacklisted(uri),
+				visited = context.wasVisited(uri), 
+				filtered = !context.isAllowed(uri);
+		if (blacklisted || visited || filtered) {
+			if (blacklisted)
+				logln("Ignored: %s (blacklisted)", uri);
+			else if (visited)
+				logln("Ignored: %s (pre-visited)", uri);
+			else if (filtered) 
+				logln("Ignored: %s (filtered)", uri);
+			return false;
 		}
-		decrementBy(crawlFrontier.size());
+		logln("Visiting (%d/%d): %s", context.count(), context.uris.size(), uri);
+		context.markVisited(uri);
+		onVisit(uri);
+		context.increment();
+		return true;
+	}
+	
+	@FunctionalInterface
+	public static interface StrategyMethod<Uri> {
+		void execute(Match<Uri> uri) throws Exception;
+	} 
+	
+	public static abstract class Builder<Uri, R> {
+		private CrawlContext<Uri> context;
+		private int maxDepth;
+		private Strategy strategy;
+		
+		public Builder() {
+			context = CrawlContext.create();
+			maxDepth = DEFAULT_MAX_DEPTH;
+			strategy = Strategy.BREADTH_FIRST;
+		}
+		
+		public Builder<Uri, R> asContext(Consumer<CrawlContext<Uri>> consumer) {
+			consumer.accept(context);
+			return this;
+		}
+		
+		public Builder<Uri, R> setContext(CrawlContext<Uri> context) {
+			this.context = context;
+			return this;
+		}
+		
+		public CrawlContext<Uri> getContext() {
+			return context;
+		}
+		
+		public Builder<Uri, R> setMaxDepth(int maxDepth) {
+			this.maxDepth = maxDepth;
+			return this;
+		}
+		
+		public int getMaxDepth() {
+			return maxDepth;
+		}
+		
+		public Builder<Uri, R> setStrategy(Strategy strategy) {
+			this.strategy = strategy;
+			return this;
+		}
+		
+		public Strategy getStrategy() {
+			return strategy;
+		}
+		
+		public abstract R build();
 	}
 }

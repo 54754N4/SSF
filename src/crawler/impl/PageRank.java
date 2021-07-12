@@ -1,4 +1,4 @@
-package crawler;
+package crawler.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,7 +35,6 @@ public class PageRank {
 	
 	/**
 	 * Initially all websites have the same page rank (e.g. probability)
-	 * @param size - the number of websites
 	 * @return the initial page rank column vector
 	 */
 	protected Matrix createInitialProbabilityVector() {

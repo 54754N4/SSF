@@ -1,31 +1,29 @@
-package crawler;
+package crawler.impl;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
+import ads.common.Utils.Time;
 import browser.common.Browser;
 import browser.common.Configurations;
 import browser.common.Configurators;
 import browser.common.Pipeline;
+import crawler.CrawlContext;
+import crawler.WebCrawler;
 
 public class PageRankWebCrawler extends WebCrawler {
 	private int optimisations;
 	private PageRank pageRank;
 	private long duration;
 	
-	public PageRankWebCrawler(int maxDepth, Strategy strategy, int optimisations) {
-		super(maxDepth, strategy);
+	public PageRankWebCrawler(CrawlContext<String> context, int maxDepth, Strategy strategy, int optimisations) {
+		super(context, maxDepth, strategy);
 		this.optimisations = optimisations;
 		pageRank = new PageRank();
 	}
 	
-	public PageRankWebCrawler(int maxDepth, int optimisations) {
-		this(maxDepth, Strategy.BREADTH_FIRST, optimisations);
+	public PageRankWebCrawler(CrawlContext<String> context, int maxDepth, int optimisations) {
+		this(context, maxDepth, Strategy.BREADTH_FIRST, optimisations);
 	}
 	
 	@Override
@@ -63,26 +61,22 @@ public class PageRankWebCrawler extends WebCrawler {
 		pageRank.optimize(optimisations)
 			.forEach((key, val) -> System.out.printf("%s -> %f%n", key.toString(), val));
 		duration = System.currentTimeMillis() - duration;
-		System.out.printf("Finished after %s%n", time(duration));
+		System.out.printf("Finished after %s%n", Time.fromMillis(duration));
 	}
 	
-	public static void main(String[] args) throws ExecutionException, InterruptedException {
-		Collection<String> urls = Arrays.asList(
-			"http://www.runescape.com",
-			"http://www.google.com"
-		), blacklist = Arrays.asList(
-			"*.guinnessworldrecords.*",
-			"*.bytedance.com",
-			"*.tiktok.com"
-		);
-		int maxDepth = 3, optimisationCycles = 100;
-		ExecutorService executor = Executors.newCachedThreadPool();
-		try {
-			PageRankWebCrawler crawler = new PageRankWebCrawler(maxDepth, optimisationCycles);
-			crawler.push(urls).blacklist(blacklist);
-			executor.submit(crawler).get();
-		} finally {
-			executor.shutdown();
+	public static void main(String[] args) throws Exception {
+		CrawlContext<String> context = CrawlContext.<String>create()
+			.push(
+				"http://www.runescape.com",
+				"http://www.google.com"
+			).blacklist(
+				"*.guinnessworldrecords.*",
+				"*.bytedance.com",
+				"*.tiktok.com"
+			);
+		int maxDepth = 2, optimisationCycles = 100;
+		try (PageRankWebCrawler crawler = new PageRankWebCrawler(context, maxDepth, optimisationCycles)) {
+			crawler.crawl();
 		}
 	}
 }

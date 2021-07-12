@@ -10,7 +10,7 @@ import browser.common.Configurators.ChromeConfigurator;
 import browser.common.Configurators.FirefoxConfigurator;
 import browser.common.Pipeline;
 
-public class Test {
+public class TestBrowsers {
 	public static void main(String[] args) throws InterruptedException {
 //		testFirefox();
 		testChrome();

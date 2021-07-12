@@ -1,37 +1,29 @@
 package crawler;
 
+import java.io.Closeable;
 import java.net.URL;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.openqa.selenium.By;
 
 import browser.common.Browser;
 
-public abstract class WebCrawler extends Crawler<String> {
-	private static final long TIMEOUT = 5; 	// in seconds
+public abstract class WebCrawler extends Crawler<String> implements Closeable {
 	private Browser browser;
 	
-	public WebCrawler(int maxDepth, Strategy strategy) {
-		super(maxDepth, strategy);
-		this.browser = setupBrowser();
+	public WebCrawler(CrawlContext<String> context, int maxDepth, Strategy strategy) {
+		super(context, maxDepth, strategy);
+		this.browser = createBrowser();
 	}
 
-	public WebCrawler(int maxDepth) {
-		this(maxDepth, Strategy.BREADTH_FIRST);	// usually depth-first is bad for web crawling
+	public WebCrawler(CrawlContext<String> context, int maxDepth) {
+		this(context, maxDepth, Strategy.BREADTH_FIRST);	// usually depth-first is bad for web crawling
 	}
 	
 	protected abstract Browser createBrowser();
-	
-	private final Browser setupBrowser() {
-		return createBrowser()
-				.waitImplicitly(TIMEOUT);
-	}
 	
 	@Override
 	protected List<String> crawlFrontier(String uri) throws Exception {
@@ -57,10 +49,26 @@ public abstract class WebCrawler extends Crawler<String> {
 		}
 	}
 	
-	protected String time(long millis) {
-		Date date = new Date(millis);
-		DateFormat formatter = new SimpleDateFormat("HH:mm:ss.SSS");
-		formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-		return formatter.format(date);
-	} 
+	@Override
+	public void close() {
+		if (browser != null) 
+			browser.close();
+	}
+	
+	public static abstract class Builder<R> extends Crawler.Builder<String, R> {
+		private Supplier<Browser> browserSupplier;
+		
+		public Builder() {
+			super();
+		}
+		
+		public Builder<R> setBrowserSupplier(Supplier<Browser> browserSupplier) {
+			this.browserSupplier = browserSupplier;
+			return this;
+		}
+		
+		public Supplier<Browser> getBrowserSupplier() {
+			return browserSupplier;
+		}
+	}
 }
