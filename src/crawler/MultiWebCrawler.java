@@ -33,9 +33,11 @@ public abstract class MultiWebCrawler extends MultiCrawler<String> {
 			.forEach(WebCrawler::close);
 	}
 	
-	public static abstract class Builder<R> extends WebCrawler.Builder<R> {
-		public Builder() {
-			super();
-		}
+	/**
+	 * We only apply a restriction to all crawler builders that depend on this class.
+	 * Restriction: Built crawler needs to be of type MultiWebCrawler
+	 */
+	public static abstract class Builder<R extends MultiWebCrawler> extends MultiCrawler.Builder<String, R> {
+		
 	}
 }

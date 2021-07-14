@@ -4,13 +4,15 @@ import crawler.Crawler.Strategy;
 import crawler.impl.FolderCrawler;
 import crawler.impl.FolderCrawler.Builder;
 import crawler.impl.MultiFolderCrawler;
-import crawler.impl.PageRankWebCrawler;
+import crawler.impl.MultiPageRankCrawler;
+import crawler.impl.PageRankCrawler;
 
 public class TestCrawlers {
 	public static void main(String[] args) throws Exception {
 //		testFolderCrawler();
 //		testMultiFolderCrawler();
-		testPageRank();
+//		testPageRank();
+		testMultiPageRank();
 	}
 	
 	public static void testFolderCrawler() throws Exception {
@@ -33,8 +35,26 @@ public class TestCrawlers {
 	}
 	
 	public static void testPageRank() throws Exception {
-		try (PageRankWebCrawler crawler = new PageRankWebCrawler.Builder()
+		try (PageRankCrawler crawler = new PageRankCrawler.Builder()
 				.setOptimisations(100)
+				.asContext(c -> c.push(
+						"http://www.runescape.com",
+						"http://www.google.com"
+					).blacklist(
+						"*.guinnessworldrecords.*",
+						"*.bytedance.com",
+						"*.tiktok.com"
+					))
+				.setMaxDepth(2)
+				.build()) {
+			crawler.crawl();
+		}
+	}
+	
+	public static void testMultiPageRank() throws Exception {
+		try (MultiPageRankCrawler crawler = new MultiPageRankCrawler.Builder()
+				.setOptimisations(100)
+				.setMaxThreads(5)
 				.asContext(c -> c.push(
 						"http://www.runescape.com",
 						"http://www.google.com"

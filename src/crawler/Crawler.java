@@ -46,7 +46,10 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 	/* Lifecycle hooks */
 	
 	protected void preCrawl() throws Exception {
-		logln("Starting crawl with %s of %d", strategy == Strategy.DEPTH_FIRST ? "max depth":"breadth", maxDepth);
+		logln(
+			"Starting crawl with %s of %d",
+			strategy == Strategy.DEPTH_FIRST ? "max depth" : "breadth",
+			maxDepth);
 	}
 	
 	protected void onVisit(Uri uri) throws Exception {}

@@ -7,7 +7,7 @@ public interface Loggeable {
 	
 	default void log(String format, Object...args) {
 		if (Constants.DEBUG) 
-			System.out.printf(this+"|"+format, args);
+			System.out.printf(this+"\t| "+format, args);
 	}
 	
 	default void logln(String format, Object...args) {
