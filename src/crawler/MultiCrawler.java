@@ -114,14 +114,11 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 						return null;
 					}
 					crawler.logln("Checking for extra tasks before stopping...", crawler);
-					long time = System.currentTimeMillis();
-					// Retry checking for new tasks
-					while (context.uris.isEmpty()) {
-						// Non-blocking sleep (allows thread to instantly go back to work)
-						if (System.currentTimeMillis() - time >=  DEFAULT_WORK_CHECK_DELAY) {
+					// Retry checking for new tasks (uses non-blocking sleep)
+					long start = System.currentTimeMillis();
+					while (context.uris.isEmpty()) 
+						if (System.currentTimeMillis() - start >=  DEFAULT_WORK_CHECK_DELAY)
 							break out;
-						}
-					}
 				}
 				// Worker thread has no more work and can terminate 
 				latch.countDown();
