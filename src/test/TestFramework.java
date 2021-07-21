@@ -1,6 +1,6 @@
 package test;
 
-import graph.ComputeNode;
+import compute.ResilientAction;
 
 public class TestFramework {
 	public static void main(String[] args) {
@@ -8,7 +8,7 @@ public class TestFramework {
 	}
 	
 	public static void testCompute() {
-		ComputeNode<String, Integer> node = Integer::parseInt;
+		ResilientAction<String, Integer> node = Integer::parseInt;
 		System.out.println(node.execute("4.0"));
 	}
 }
