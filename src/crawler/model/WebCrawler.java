@@ -1,4 +1,4 @@
-package crawler;
+package crawler.model;
 
 import java.io.Closeable;
 import java.net.URL;

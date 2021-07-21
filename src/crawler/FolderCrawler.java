@@ -1,4 +1,4 @@
-package crawler.impl;
+package crawler;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,8 +8,8 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import crawler.CrawlContext;
-import crawler.Crawler;
+import crawler.model.CrawlContext;
+import crawler.model.Crawler;
 
 public class FolderCrawler extends Crawler<String> {
 	// Set file walker max depth to 1 (since crawler has his own way of tracking depth anyways)

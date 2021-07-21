@@ -1,9 +1,9 @@
-package crawler.impl;
+package crawler;
 
-import crawler.CrawlContext;
-import crawler.Crawler;
-import crawler.Crawler.Strategy;
-import crawler.MultiCrawler;
+import crawler.model.CrawlContext;
+import crawler.model.Crawler;
+import crawler.model.MultiCrawler;
+import crawler.model.Crawler.Strategy;
 
 public class MultiFolderCrawler extends MultiCrawler<String> {
 

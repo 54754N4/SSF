@@ -1,4 +1,4 @@
-package crawler;
+package crawler.model;
 
 import java.io.Closeable;
 import java.lang.Thread.UncaughtExceptionHandler;
@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import crawler.Crawler.Strategy;
+import crawler.model.Crawler.Strategy;
 
 public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Callable<Void>, Loggeable, Closeable {
 	public static final int DEFAULT_MAX_THREADS = 5;

@@ -1,4 +1,4 @@
-package crawler;
+package crawler.model;
 
 import browser.common.Constants;
 

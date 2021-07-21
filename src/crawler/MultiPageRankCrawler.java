@@ -1,24 +1,22 @@
-package crawler.impl;
-
-import java.util.List;
-import java.util.concurrent.ConcurrentSkipListSet;
+package crawler;
 
 import ads.common.Utils.Time;
 import browser.common.Browser;
 import browser.common.Configurations;
 import browser.common.Configurators;
 import browser.common.Pipeline;
-import crawler.CrawlContext;
-import crawler.WebCrawler;
+import crawler.model.CrawlContext;
+import crawler.model.MultiWebCrawler;
+import crawler.model.WebCrawler;
+import crawler.model.Crawler.Strategy;
 
-public class PageRankCrawler extends WebCrawler {
-	public static int DEFAULT_OPTIMISATIONS = 100;
-	private int optimisations;
+public class MultiPageRankCrawler extends MultiWebCrawler {
 	private PageRank pageRank;
+	private int optimisations;
 	private long duration;
 	
-	public PageRankCrawler(CrawlContext<String> context, int maxDepth, Strategy strategy, int optimisations, PageRank pageRank) {
-		super(context, maxDepth, strategy);
+	public MultiPageRankCrawler(CrawlContext<String> context, int maxDepth, int maxThreads, Strategy strategy, int optimisations, PageRank pageRank) {
+		super(context, maxDepth, maxThreads, strategy);
 		this.optimisations = optimisations;
 		this.pageRank = pageRank;
 	}
@@ -26,27 +24,29 @@ public class PageRankCrawler extends WebCrawler {
 	@Override
 	protected Browser createBrowser() { 
 		return new Browser(
-			Configurators.FIREFOX.createDriver(
+			Configurators.firefox().setOptions(
 				Pipeline.start(Configurations.FIREFOX::defaultSettings)
 //					.then(Configurations.firefox()::debugging)
-			)
+			).build()
 		);
 	}
-	@Override
-	protected List<String> crawlFrontier(String uri) throws Exception {
-		List<String> urls = super.crawlFrontier(uri);
-		for (String child : urls) {
-			if (!child.trim().equals("")) {
-				pageRank.connections()
-					.putIfAbsent(uri, new ConcurrentSkipListSet<>());	// ignore duplicate links with set
-				pageRank.connections()
-					.get(uri)
-					.add(child);
-			}
-		}
-		return urls;
-	}
 	
+	@Override
+	protected WebCrawler create(CrawlContext<String> context, int maxDepth, Strategy strategy) {
+		return new PageRankCrawler(context, maxDepth, strategy, optimisations, pageRank) {
+			@Override
+			protected Browser createBrowser() {
+				return MultiPageRankCrawler.this.createBrowser();
+			}
+			
+			/* We want the multi-threaded crawler's postCrawl 
+			 * to do the page-ranking algorithm instead of each
+			 * worker */
+			@Override protected void preCrawl() {}
+			@Override protected void postCrawl() {}
+		};
+	}
+
 	@Override
 	protected void preCrawl() throws Exception {
 		super.preCrawl();
@@ -63,13 +63,13 @@ public class PageRankCrawler extends WebCrawler {
 		logln("Finished after %s%n", Time.fromMillis(duration));
 	}
 	
-	public static class Builder extends WebCrawler.Builder<PageRankCrawler> {
+	public static class Builder extends MultiWebCrawler.Builder<MultiPageRankCrawler> {
 		private int optimisations;
 		private PageRank pageRank;
 		
 		public Builder() {
 			super();
-			optimisations = DEFAULT_OPTIMISATIONS;
+			optimisations = PageRankCrawler.DEFAULT_OPTIMISATIONS;
 			pageRank = new PageRank();
 		}
 		
@@ -92,13 +92,15 @@ public class PageRankCrawler extends WebCrawler {
 		}
 		
 		@Override
-		public PageRankCrawler build() {
-			return new PageRankCrawler(
+		public MultiPageRankCrawler build() {
+			return new MultiPageRankCrawler(
 				getContext(),
 				getMaxDepth(),
+				getMaxThreads(),
 				getStrategy(),
 				optimisations,
 				pageRank);
 		}
+		
 	}
 }

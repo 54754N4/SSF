@@ -1,11 +1,11 @@
 package test;
 
-import crawler.Crawler.Strategy;
-import crawler.impl.FolderCrawler;
-import crawler.impl.FolderCrawler.Builder;
-import crawler.impl.MultiFolderCrawler;
-import crawler.impl.MultiPageRankCrawler;
-import crawler.impl.PageRankCrawler;
+import crawler.FolderCrawler;
+import crawler.MultiFolderCrawler;
+import crawler.MultiPageRankCrawler;
+import crawler.PageRankCrawler;
+import crawler.FolderCrawler.Builder;
+import crawler.model.Crawler.Strategy;
 
 public class TestCrawlers {
 	public static void main(String[] args) throws Exception {

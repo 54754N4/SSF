@@ -1,7 +1,7 @@
-package crawler;
+package crawler.model;
 
 import browser.common.Browser;
-import crawler.Crawler.Strategy;
+import crawler.model.Crawler.Strategy;
 
 public abstract class MultiWebCrawler extends MultiCrawler<String> {
 

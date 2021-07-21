@@ -16,97 +16,46 @@ import org.openqa.selenium.safari.SafariOptions;
 import io.github.bonigarcia.wdm.config.DriverManagerType;
 
 public interface Configurators {
-
-	static FirefoxConfigurator FIREFOX = new FirefoxConfigurator(); 
-	static ChromeConfigurator CHROME = new ChromeConfigurator();
-	static EdgeConfigurator EDGE = new EdgeConfigurator();
-	static SafariConfigurator SAFARI = new SafariConfigurator(); 
-	static OperaConfigurator OPERA = new OperaConfigurator(); 
-	static InternetExplorerConfigurator INTERNET_EXPLORER = new InternetExplorerConfigurator(); 
 	
-	static FirefoxConfigurator firefox() {
-		return FIREFOX;
+	static BrowserConfigurator.Builder<FirefoxOptions> firefox() {
+		return new BrowserConfigurator.Builder<>(
+			FirefoxOptions::new,
+			FirefoxDriver::new,
+			DriverManagerType.FIREFOX);
 	}
 	
-	static ChromeConfigurator chrome() {
-		return CHROME;
+	static BrowserConfigurator.Builder<ChromeOptions> chrome() {
+		return new BrowserConfigurator.Builder<>(
+			ChromeOptions::new,
+			ChromeDriver::new,
+			DriverManagerType.CHROME);
 	}
 	
-	static EdgeConfigurator edge() {
-		return EDGE;
+	static BrowserConfigurator.Builder<EdgeOptions> edge() {
+		return new BrowserConfigurator.Builder<>(
+			EdgeOptions::new,
+			EdgeDriver::new,
+			DriverManagerType.EDGE);
 	}
 	
-	static SafariConfigurator safari() {
-		return SAFARI;
+	static BrowserConfigurator.Builder<SafariOptions> safari() {
+		return new BrowserConfigurator.Builder<>(
+			SafariOptions::new,
+			SafariDriver::new,
+			DriverManagerType.SAFARI);
 	}
 	
-	static OperaConfigurator opera() {
-		return OPERA;
+	static BrowserConfigurator.Builder<OperaOptions> opera() {
+		return new BrowserConfigurator.Builder<>(
+			OperaOptions::new,
+			OperaDriver::new,
+			DriverManagerType.OPERA); 
 	}
 	
-	static InternetExplorerConfigurator internetExplorer() {
-		return INTERNET_EXPLORER;
+	static BrowserConfigurator.Builder<InternetExplorerOptions> internetExplorer() {
+		return new BrowserConfigurator.Builder<>(
+			InternetExplorerOptions::new,
+			InternetExplorerDriver::new,
+			DriverManagerType.IEXPLORER);
 	}
-	
-	/* Configurators */
-	
-	public static class FirefoxConfigurator extends BrowserConfigurator<FirefoxOptions> {
-		public FirefoxConfigurator() {
-			super(
-					FirefoxOptions::new, 
-					FirefoxDriver::new, 
-					DriverManagerType.FIREFOX
-			);
-		}
-	}
-	
-	public static class ChromeConfigurator extends BrowserConfigurator<ChromeOptions> {
-		public ChromeConfigurator() {
-			super(
-					ChromeOptions::new, 
-					ChromeDriver::new, 
-					DriverManagerType.CHROME
-			);
-		}
-	}
-	
-	public static class EdgeConfigurator extends BrowserConfigurator<EdgeOptions> {
-		public EdgeConfigurator() {
-			super(
-					EdgeOptions::new, 
-					EdgeDriver::new, 
-					DriverManagerType.EDGE
-			);
-		}
-	}
-	
-	public static class SafariConfigurator extends BrowserConfigurator<SafariOptions> {
-		public SafariConfigurator() {
-			super(
-					SafariOptions::new, 
-					SafariDriver::new, 
-					DriverManagerType.SAFARI
-			);
-		}
-	}
-	
-	public static class OperaConfigurator extends BrowserConfigurator<OperaOptions> {
-		public OperaConfigurator() {
-			super(
-					OperaOptions::new, 
-					OperaDriver::new, 
-					DriverManagerType.OPERA
-			);
-		}
-	}
-	
-	public static class InternetExplorerConfigurator extends BrowserConfigurator<InternetExplorerOptions> {
-		public InternetExplorerConfigurator() {
-			super(
-					InternetExplorerOptions::new, 
-					InternetExplorerDriver::new, 
-					DriverManagerType.IEXPLORER
-			);
-		}
-	}	
 }

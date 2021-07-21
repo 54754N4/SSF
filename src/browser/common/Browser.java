@@ -31,6 +31,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.WindowType;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.print.PrintOptions;
+import org.openqa.selenium.remote.AbstractDriverOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.locators.RelativeLocator;
 import org.openqa.selenium.support.locators.RelativeLocator.RelativeBy;
@@ -57,6 +58,14 @@ public class Browser implements Closeable {
     
     public Browser(RemoteWebDriver driver) {
     	this(driver, null);
+    }
+    
+    public <K extends AbstractDriverOptions<?>> Browser(BrowserConfigurator<K> configurator, @Nullable Long timeout) {
+    	this(configurator.createDriver(), timeout);
+    }
+    
+    public <K extends AbstractDriverOptions<?>> Browser(BrowserConfigurator<K> configurator) {
+    	this(configurator, null);
     }
     
     @Override
@@ -123,8 +132,8 @@ public class Browser implements Closeable {
         return this;
     }
     
-    public Browser visit(String url) {
-        driver.navigate().to(url);
+    public Browser visit(String format, Object...args) {
+        driver.navigate().to(String.format(format, args));
         return this;
     }
     
@@ -406,8 +415,7 @@ public class Browser implements Closeable {
     }
 
     public Browser type(final String input, By by) {
-        waitFor(by, Arrays.asList(element -> element.sendKeys(input)));
-        return this;
+        return waitFor(by, Arrays.asList(element -> element.sendKeys(input)));
     }
 
     public Browser click(By...bys) {

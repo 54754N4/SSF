@@ -1,4 +1,4 @@
-package crawler.impl;
+package crawler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +47,7 @@ public class PageRank {
 	
 	/**
 	 * Square stochastic matrix where each column represents the probability
-	 * of clicking on the URL mapped by the respective row (also a Markov chain
+	 * of clicking on the URL mapped by the respective row (AKA Markov chain
 	 * transition matrix). 
 	 * @return stochastic matrix of probabilities 
 	 */

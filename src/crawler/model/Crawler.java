@@ -1,4 +1,4 @@
-package crawler;
+package crawler.model;
 
 import java.util.Iterator;
 import java.util.List;
@@ -6,7 +6,7 @@ import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import crawler.CrawlContext.Match;
+import crawler.model.CrawlContext.Match;
 
 /**
  * A Crawler is a thread that can search, up to a specified depth, 
