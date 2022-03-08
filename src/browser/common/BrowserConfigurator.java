@@ -11,19 +11,6 @@ import io.github.bonigarcia.wdm.WebDriverManager;
 import io.github.bonigarcia.wdm.config.DriverManagerType;
 
 public class BrowserConfigurator<K> {
-	public static final boolean is64Bit, is32Bit;
-	
-	/* Check host OS bit-ness on initial reference to class
-	 * Reference: https://stackoverflow.com/a/5940770/3225638
-	 */
-	static {
-		String arch = System.getenv("PROCESSOR_ARCHITECTURE");
-		String wow64Arch = System.getenv("PROCESSOR_ARCHITEW6432");
-		is64Bit = arch != null && arch.endsWith("64")
-                || wow64Arch != null && wow64Arch.endsWith("64");
-		is32Bit = !is64Bit;
-	}
-	
 	private final Supplier<K> options;
 	private final Function<K, RemoteWebDriver> creator;
 	private final DriverManagerType type;
@@ -34,10 +21,12 @@ public class BrowserConfigurator<K> {
 		this.type = type;
 	}
 	
+	/* Checks that a specific browser driver is already 
+	 * downloaded, otherwise downloads correct version.
+	 */
 	public RemoteWebDriver createDriver() {
-		// Checks that driver is downloaded, otherwise downloads it
 		WebDriverManager manager = WebDriverManager.getInstance(type);
-		manager = is64Bit ? manager.arch64() : manager.arch32();
+		manager = Constants.is64Bit ? manager.arch64() : manager.arch32();
 		manager.setup();
 		return creator.apply(options.get());
 	}
@@ -47,53 +36,45 @@ public class BrowserConfigurator<K> {
 	 * for options (allows generic methods like
 	 * Builder::setProxy).
 	 * 
-	 * @param <K> - browser options class type
+	 * @param <K> - browser options runtime class type
 	 */
 	public static class Builder<K extends AbstractDriverOptions<?>> {
 		protected Supplier<K> options;
 		protected Function<K, RemoteWebDriver> creator;
 		protected DriverManagerType type;
 		
-		/**
-		 * Package private constructor
-		 */
+		/* Package private constructor */
 		Builder(Supplier<K> options, Function<K, RemoteWebDriver> creator, DriverManagerType type) {
 			this.options = options;
 			this.creator = creator;
 			this.type = type;
 		}
 		
-		public Builder<K> setOptions(K options) {
+		public Builder<K> config(K options) {
 			this.options = () -> options;
 			return this;
 		}
 		
-		public Builder<K> setOptions(Supplier<K> options) {
+		public Builder<K> config(Supplier<K> options) {
 			this.options = options;
 			return this;
 		}
-		
-		public Builder<K> setOptions(Pipeline<Void, K> configuration) {
-			this.options = configuration::run;
-			return this;
-		}
-		
-		public Builder<K> config(Function<K, K> configurator) {
-			this.options = () -> configurator.apply(options.get());
-			return this;
-		}
 
+		public <V> Builder<K> config(Function<K, V> configurator) {
+			final K ops = options.get();
+			configurator.apply(ops);
+			this.options = () -> ops;
+			return this;
+		}
+		
 		/* Convenience methods */
 		
 		public Builder<K> setProxy(final String host, final int port) {
-			this.options = () -> {
-				K ops = options.get();
-				Proxy proxy = new Proxy()
-					.setHttpProxy(String.format("%s:%s", host, port));
-				ops.setCapability("proxy", proxy);
-				return ops;
-			};
-			return this;	
+			return config(ops -> ops.setProxy(new Proxy().setHttpProxy(String.format("%s:%s", host, port))));
+		}
+		
+		public Builder<K> acceptInsecureCerts(boolean bool) {
+			return config(ops -> ops.setAcceptInsecureCerts(bool));
 		}
 		
 		public BrowserConfigurator<K> build() {

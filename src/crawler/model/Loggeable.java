@@ -6,7 +6,7 @@ import browser.common.Constants;
 public interface Loggeable {
 	
 	default void log(String format, Object...args) {
-		if (Constants.DEBUG) 
+		if (Constants.VERBOSE) 
 			System.out.printf(this+"\t| "+format, args);
 	}
 	

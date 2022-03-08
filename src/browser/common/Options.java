@@ -10,7 +10,7 @@ import org.openqa.selenium.ie.InternetExplorerOptions;
 import org.openqa.selenium.opera.OperaOptions;
 import org.openqa.selenium.safari.SafariOptions;
 
-public interface Configurations {
+public interface Options {
 	
 	/* Constants */
 	
@@ -25,12 +25,12 @@ public interface Configurations {
 	
 	/* Specific browser configs */
 	
-	static Firefox FIREFOX = new Firefox();
-	static Chrome CHROME = new Chrome();
-	static Edge EDGE = new Edge();
-	static Safari SAFARI = new Safari();
-	static Opera OPERA = new Opera();
-	static InternetExplorer INTERNET_EXPLORER = new InternetExplorer();
+	static final Firefox FIREFOX = new Firefox();
+	static final Chrome CHROME = new Chrome();
+	static final Edge EDGE = new Edge();
+	static final Safari SAFARI = new Safari();
+	static final Opera OPERA = new Opera();
+	static final InternetExplorer INTERNET_EXPLORER = new InternetExplorer();
 	
 	static Firefox firefox() {
 		return FIREFOX;
@@ -63,7 +63,6 @@ public interface Configurations {
 		default T debugging(T options) {
 			throw new IllegalStateException("Browser doesn't support headless and other debugging features.");
 		}
-		
 	}
 	
 	public static class Firefox implements ConfigurationMethods<FirefoxOptions> {

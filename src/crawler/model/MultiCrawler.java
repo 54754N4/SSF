@@ -21,7 +21,7 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 	
 	protected final int maxDepth;
 	protected final Strategy strategy;
-	protected final CrawlContext<Uri> context;
+	protected final Context<Uri> context;
 	protected final List<Crawler<Uri>> crawlers;
 	
 	private final int maxThreads;
@@ -29,7 +29,7 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 	private CountDownLatch latch;
 	private AtomicInteger terminated;
 	
-	public MultiCrawler(CrawlContext<Uri> context, int maxDepth, int maxThreads, Strategy strategy) {
+	public MultiCrawler(Context<Uri> context, int maxDepth, int maxThreads, Strategy strategy) {
 		this.maxDepth = maxDepth;
 		this.strategy = strategy;
 		this.context = context;
@@ -38,7 +38,7 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 		executor = Executors.newFixedThreadPool(maxThreads+1);	// +1 to account for current crawler
 	}
 	
-	protected abstract Crawler<Uri> create(CrawlContext<Uri> context, int maxDepth, Strategy strategy);
+	protected abstract Crawler<Uri> create(Context<Uri> context, int maxDepth, Strategy strategy);
 	
 	@Override
 	public void close() {
@@ -93,7 +93,7 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 			.collect(Collectors.toList());
 	}
 	
-	private final Crawler<Uri> trackCrawlerCreation(CrawlContext<Uri> context) {
+	private final Crawler<Uri> trackCrawlerCreation(Context<Uri> context) {
 		Crawler<Uri> crawler = create(context, maxDepth, strategy);
 		crawlers.add(crawler);
 		return crawler;
@@ -108,7 +108,7 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 					// Call crawl method in worker thread's context
 					try { crawler.call(); } 
 					catch (Exception e) {
-						logln("Killed thread that triggered error %s", this, e.getMessage());
+						crawler.logln("Killed thread that triggered error %s", this, e.getMessage());
 						e.printStackTrace();
 						latch.countDown();	// trip latch on error as well
 						return null;
@@ -122,7 +122,7 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 				}
 				// Worker thread has no more work and can terminate 
 				latch.countDown();
-				logln(
+				crawler.logln(
 					"Thread terminated (%d/%d): %s",
 					terminated.incrementAndGet(),
 					maxThreads,

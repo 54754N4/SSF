@@ -8,14 +8,14 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import crawler.model.CrawlContext;
+import crawler.model.Context;
 import crawler.model.Crawler;
 
 public class FolderCrawler extends Crawler<String> {
 	// Set file walker max depth to 1 (since crawler has his own way of tracking depth anyways)
 	private static final int WALKER_MAX_DEPTH = 1;
 	
-	public FolderCrawler(CrawlContext<String> context, int maxDepth, Strategy strategy) {
+	public FolderCrawler(Context<String> context, int maxDepth, Strategy strategy) {
 		super(context, maxDepth, strategy);
 	}
 	

@@ -5,7 +5,7 @@ import crawler.model.Crawler.Strategy;
 
 public abstract class MultiWebCrawler extends MultiCrawler<String> {
 
-	public MultiWebCrawler(CrawlContext<String> context, int maxDepth, int maxThreads, Strategy strategy) {
+	public MultiWebCrawler(Context<String> context, int maxDepth, int maxThreads, Strategy strategy) {
 		super(context, maxDepth, maxThreads, strategy);
 	}
 
@@ -16,7 +16,7 @@ public abstract class MultiWebCrawler extends MultiCrawler<String> {
 	 * created by the MultiWebCrawler.
 	 */
 	@Override
-	protected WebCrawler create(CrawlContext<String> context, int maxDepth, Strategy strategy) {
+	protected WebCrawler create(Context<String> context, int maxDepth, Strategy strategy) {
 		return new WebCrawler(context, maxDepth, strategy) {
 			@Override
 			protected Browser createBrowser() {

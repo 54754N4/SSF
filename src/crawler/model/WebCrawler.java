@@ -14,12 +14,12 @@ import browser.common.Browser;
 public abstract class WebCrawler extends Crawler<String> implements Closeable {
 	private Browser browser;
 	
-	public WebCrawler(CrawlContext<String> context, int maxDepth, Strategy strategy) {
+	public WebCrawler(Context<String> context, int maxDepth, Strategy strategy) {
 		super(context, maxDepth, strategy);
 		this.browser = createBrowser();
 	}
 
-	public WebCrawler(CrawlContext<String> context, int maxDepth) {
+	public WebCrawler(Context<String> context, int maxDepth) {
 		this(context, maxDepth, Strategy.BREADTH_FIRST);	// usually depth-first is bad for web crawling
 	}
 	

@@ -1,22 +1,22 @@
 package crawler;
 
-import crawler.model.CrawlContext;
+import crawler.model.Context;
 import crawler.model.Crawler;
 import crawler.model.MultiCrawler;
 import crawler.model.Crawler.Strategy;
 
 public class MultiFolderCrawler extends MultiCrawler<String> {
 
-	public MultiFolderCrawler(CrawlContext<String> context, int maxDepth, Strategy strategy, int maxThreads) {
+	public MultiFolderCrawler(Context<String> context, int maxDepth, Strategy strategy, int maxThreads) {
 		super(context, maxDepth, maxThreads, strategy);
 	}
 	
-	public MultiFolderCrawler(CrawlContext<String> context, int maxDepth, Strategy strategy) {
+	public MultiFolderCrawler(Context<String> context, int maxDepth, Strategy strategy) {
 		this(context, maxDepth, strategy, DEFAULT_MAX_THREADS);
 	}
 
 	@Override
-	protected Crawler<String> create(CrawlContext<String> context, int maxDepth, Strategy strategy) {
+	protected Crawler<String> create(Context<String> context, int maxDepth, Strategy strategy) {
 		return new FolderCrawler(context, maxDepth, strategy);
 	}
 	

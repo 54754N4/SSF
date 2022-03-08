@@ -5,10 +5,9 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 import ads.common.Utils.Time;
 import browser.common.Browser;
-import browser.common.Configurations;
+import browser.common.Options;
 import browser.common.Configurators;
-import browser.common.Pipeline;
-import crawler.model.CrawlContext;
+import crawler.model.Context;
 import crawler.model.WebCrawler;
 
 public class PageRankCrawler extends WebCrawler {
@@ -17,7 +16,7 @@ public class PageRankCrawler extends WebCrawler {
 	private PageRank pageRank;
 	private long duration;
 	
-	public PageRankCrawler(CrawlContext<String> context, int maxDepth, Strategy strategy, int optimisations, PageRank pageRank) {
+	public PageRankCrawler(Context<String> context, int maxDepth, Strategy strategy, int optimisations, PageRank pageRank) {
 		super(context, maxDepth, strategy);
 		this.optimisations = optimisations;
 		this.pageRank = pageRank;
@@ -26,10 +25,10 @@ public class PageRankCrawler extends WebCrawler {
 	@Override
 	protected Browser createBrowser() { 
 		return new Browser(
-			Configurators.firefox().setOptions(
-				Pipeline.start(Configurations.FIREFOX::defaultSettings)
-//					.then(Configurations.firefox()::debugging)
-			).build()
+			Configurators.firefox()
+				.config(Options.FIREFOX::defaultSettings)
+//				.config(Options.FIREFOX::debugging)
+				.build()
 		);
 	}
 	@Override

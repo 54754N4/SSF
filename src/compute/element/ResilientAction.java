@@ -1,4 +1,4 @@
-package compute;
+package compute.element;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -88,5 +88,11 @@ public interface ResilientAction<I, O> extends Function<I, O> {
 	@Override
 	default O apply(I in) {
 		return execute(in);
+	}
+	
+	/* Wrapper */
+	
+	static <I, O> ResilientAction<I, O> wrap(Function<I, O> function) {
+		return i -> function.apply(i);
 	}
 }

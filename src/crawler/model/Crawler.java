@@ -6,7 +6,7 @@ import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import crawler.model.CrawlContext.Match;
+import crawler.model.Context.Match;
 
 /**
  * A Crawler is a thread that can search, up to a specified depth, 
@@ -27,9 +27,9 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 	/* Attributes */
 	protected final int maxDepth;
 	protected final Strategy strategy;
-	protected final CrawlContext<Uri> context;
+	protected final Context<Uri> context;
 	
-	public Crawler(CrawlContext<Uri> context, int maxDepth, Strategy strategy) {
+	public Crawler(Context<Uri> context, int maxDepth, Strategy strategy) {
 		if (maxDepth < 0)
 			throw new IllegalArgumentException("Max depth can only be strict positive integers");
 		this.context = context;
@@ -148,27 +148,27 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 	} 
 	
 	public static abstract class Builder<Uri, R> {
-		private CrawlContext<Uri> context;
+		private Context<Uri> context;
 		private int maxDepth;
 		private Strategy strategy;
 		
 		public Builder() {
-			context = CrawlContext.create();
+			context = Context.create();
 			maxDepth = DEFAULT_MAX_DEPTH;
 			strategy = Strategy.BREADTH_FIRST;
 		}
 		
-		public Builder<Uri, R> asContext(Consumer<CrawlContext<Uri>> consumer) {
+		public Builder<Uri, R> asContext(Consumer<Context<Uri>> consumer) {
 			consumer.accept(context);
 			return this;
 		}
 		
-		public Builder<Uri, R> setContext(CrawlContext<Uri> context) {
+		public Builder<Uri, R> setContext(Context<Uri> context) {
 			this.context = context;
 			return this;
 		}
 		
-		public CrawlContext<Uri> getContext() {
+		public Context<Uri> getContext() {
 			return context;
 		}
 		

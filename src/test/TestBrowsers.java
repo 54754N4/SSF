@@ -4,9 +4,9 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.firefox.FirefoxOptions;
 
 import browser.common.Browser;
-import browser.common.Configurations;
+import browser.common.BrowserConfigurator.Builder;
+import browser.common.Options;
 import browser.common.Configurators;
-import browser.common.Pipeline;
 
 public class TestBrowsers {
 	public static void main(String[] args) throws InterruptedException {
@@ -15,9 +15,10 @@ public class TestBrowsers {
 	}
 	
 	public static void testFirefox() throws InterruptedException {
-		Pipeline<Void, FirefoxOptions> pipeline = Pipeline.start(Configurations.FIREFOX::defaultSettings)
-			.then(Configurations.FIREFOX::debugging);
-		try (Browser browser = new Browser(Configurators.firefox().setOptions(pipeline).build())) {
+		Builder<FirefoxOptions> builder = Configurators.firefox()
+				.config(Options.FIREFOX::defaultSettings)
+				.config(Options.FIREFOX::debugging);
+		try (Browser browser = new Browser(builder.build())) {
 			System.out.println(browser.getCurrentUrl());
 			browser.visit("http://www.google.com")
 				.waitUntilLoaded();
@@ -27,9 +28,10 @@ public class TestBrowsers {
 	}
 	
 	public static void testChrome() throws InterruptedException {
-		Pipeline<Void, ChromeOptions> pipeline = Pipeline.start(Configurations.CHROME::defaultSettings)
-				.then(Configurations.CHROME::debugging);
-		try (Browser browser = new Browser(Configurators.chrome().setOptions(pipeline).build())) {
+		Builder<ChromeOptions> builder = Configurators.chrome()
+				.config(Options.CHROME::defaultSettings)
+				.config(Options.CHROME::debugging);
+		try (Browser browser = new Browser(builder.build())) {
 			System.out.println(browser.getCurrentUrl());
 			browser.visit("http://www.google.com")
 				.waitUntilLoaded();

@@ -2,20 +2,19 @@ package crawler;
 
 import ads.common.Utils.Time;
 import browser.common.Browser;
-import browser.common.Configurations;
 import browser.common.Configurators;
-import browser.common.Pipeline;
-import crawler.model.CrawlContext;
+import browser.common.Options;
+import crawler.model.Context;
+import crawler.model.Crawler.Strategy;
 import crawler.model.MultiWebCrawler;
 import crawler.model.WebCrawler;
-import crawler.model.Crawler.Strategy;
 
 public class MultiPageRankCrawler extends MultiWebCrawler {
 	private PageRank pageRank;
 	private int optimisations;
 	private long duration;
 	
-	public MultiPageRankCrawler(CrawlContext<String> context, int maxDepth, int maxThreads, Strategy strategy, int optimisations, PageRank pageRank) {
+	public MultiPageRankCrawler(Context<String> context, int maxDepth, int maxThreads, Strategy strategy, int optimisations, PageRank pageRank) {
 		super(context, maxDepth, maxThreads, strategy);
 		this.optimisations = optimisations;
 		this.pageRank = pageRank;
@@ -24,15 +23,15 @@ public class MultiPageRankCrawler extends MultiWebCrawler {
 	@Override
 	protected Browser createBrowser() { 
 		return new Browser(
-			Configurators.firefox().setOptions(
-				Pipeline.start(Configurations.FIREFOX::defaultSettings)
-//					.then(Configurations.firefox()::debugging)
-			).build()
-		);
+				Configurators.firefox()
+					.config(Options.FIREFOX::defaultSettings)
+//					.config(Configurations.FIREFOX::debugging)
+					.build()
+			);
 	}
 	
 	@Override
-	protected WebCrawler create(CrawlContext<String> context, int maxDepth, Strategy strategy) {
+	protected WebCrawler create(Context<String> context, int maxDepth, Strategy strategy) {
 		return new PageRankCrawler(context, maxDepth, strategy, optimisations, pageRank) {
 			@Override
 			protected Browser createBrowser() {
