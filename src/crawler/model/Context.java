@@ -4,10 +4,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -15,7 +15,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Context<Uri> {
-	protected final Queue<Match<Uri>> uris;
+	public static enum Strategy { BREADTH_FIRST, DEPTH_FIRST }
+	
+	protected final Strategy strategy;
+	protected final LinearStorage<Match<Uri>> storage;
 	protected final Set<Uri> visited;
 	protected final Set<Pattern> blacklist;
 	private Predicate<Uri> filter;
@@ -30,22 +33,40 @@ public class Context<Uri> {
 		}
 	};
 	
-	public Context(List<Uri> uris, Set<Uri> visited, List<String> blacklist, Predicate<Uri> filter, int count) {
-		this.uris = new ConcurrentLinkedDeque<>(Match.of(uris));
+	public Context(List<Uri> uris, Set<Uri> visited, List<String> blacklist, Predicate<Uri> filter, int count, Strategy strategy) {
 		this.visited = new ConcurrentSkipListSet<>(visited);
 		this.blacklist = new ConcurrentSkipListSet<>(PATTERN_COMPARATOR);
 		this.count = new AtomicInteger(count);
 		this.filter = filter;
+		// Set storage based on strategy
+		this.strategy = strategy;
+		if (strategy == Strategy.DEPTH_FIRST) 
+			storage = new LinearStorage<>(new Stack<>());
+		else
+			storage = new LinearStorage<>(new LinkedList<>());
+		// Transfer initial URIs and blacklist over
+		for (Uri uri: uris)
+			storage.push(Match.of(uri));
 		for (String url : blacklist)
 			blacklist(url);
 	}
 	
-	public Context() {
-		this(new ArrayList<>(), new HashSet<>(), new ArrayList<>(), uri -> true, 0);
+	public Context(Strategy strategy) {
+		this(new ArrayList<>(), new HashSet<>(), new ArrayList<>(), uri -> true, 0, strategy);
 	}
 	
-	public static <T> Context<T> create() {
-		return new Context<>();
+	public static <T> Context<T> create(Strategy strategy) {
+		return new Context<>(strategy);
+	}
+	
+	/* Accessors */
+	
+	public Strategy getStrategy() {
+		return strategy;
+	}
+	
+	public LinearStorage<Match<Uri>> storage() {
+		return storage;
 	}
 	
 	/* Synchronised visits count handling */
@@ -158,24 +179,12 @@ public class Context<Uri> {
 	public void markVisited(Uri uri) {
 		visited.add(uri);
 	}
-		
-	/* Adding uris */
+	
+	/* Adding URIs */
 	
 	public Context<Uri> push(int depth, Uri uri) {
 		if (!wasVisited(uri))	// prevent re-crawling same targets
-			uris.offer(Match.of(depth, uri));
-		return this;
-	}
-	
-	public Context<Uri> push(int depth, Collection<Uri> uris) {
-		for (Uri uri : uris)
-			push(depth, uri);
-		return this;
-	}
-	
-	public Context<Uri> push(int depth, @SuppressWarnings("unchecked") Uri...uris) {
-		for (Uri uri : uris)
-			push(depth, uri);
+			storage.push(Match.of(depth, uri));
 		return this;
 	}
 	
@@ -183,11 +192,14 @@ public class Context<Uri> {
 		return push(0, uri);
 	}
 	
-	public Context<Uri> push(@SuppressWarnings("unchecked") Uri...uris) {
+	@SuppressWarnings("unchecked")	// up to the user to make sure they're all the same type
+	public Context<Uri> push(Uri...uris) {
 		for (Uri uri : uris)
 			push(uri);
 		return this;
 	}
+
+	/* Match class to keep track of depth */
 	
 	public static class Match<Uri> {
 		private final int depth;

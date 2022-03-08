@@ -13,14 +13,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import crawler.model.Crawler.Strategy;
+import crawler.model.Context.Strategy;
 
 public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Callable<Void>, Loggeable, Closeable {
 	public static final int DEFAULT_MAX_THREADS = 5;
 	public static final long DEFAULT_WORK_CHECK_DELAY = 5000;
 	
 	protected final int maxDepth;
-	protected final Strategy strategy;
 	protected final Context<Uri> context;
 	protected final List<Crawler<Uri>> crawlers;
 	
@@ -29,16 +28,15 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 	private CountDownLatch latch;
 	private AtomicInteger terminated;
 	
-	public MultiCrawler(Context<Uri> context, int maxDepth, int maxThreads, Strategy strategy) {
+	public MultiCrawler(Context<Uri> context, int maxDepth, int maxThreads) {
 		this.maxDepth = maxDepth;
-		this.strategy = strategy;
 		this.context = context;
 		this.maxThreads = maxThreads;
 		crawlers = new ArrayList<>();
 		executor = Executors.newFixedThreadPool(maxThreads+1);	// +1 to account for current crawler
 	}
 	
-	protected abstract Crawler<Uri> create(Context<Uri> context, int maxDepth, Strategy strategy);
+	protected abstract Crawler<Uri> create(Context<Uri> context, int maxDepth);
 	
 	@Override
 	public void close() {
@@ -67,7 +65,7 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 		terminated = new AtomicInteger();
 		latch = new CountDownLatch(maxThreads);
 		logln("Starting mutli-threaded crawl with %s of %d", 
-				strategy == Strategy.DEPTH_FIRST ? "max depth" : "breadth", 
+				context.getStrategy() == Strategy.DEPTH_FIRST ? "max depth" : "breadth", 
 				maxDepth);
 	}
 	
@@ -94,7 +92,7 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 	}
 	
 	private final Crawler<Uri> trackCrawlerCreation(Context<Uri> context) {
-		Crawler<Uri> crawler = create(context, maxDepth, strategy);
+		Crawler<Uri> crawler = create(context, maxDepth);
 		crawlers.add(crawler);
 		return crawler;
 	}
@@ -116,7 +114,7 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 					crawler.logln("Checking for extra tasks before stopping...", crawler);
 					// Retry checking for new tasks (uses non-blocking sleep)
 					long start = System.currentTimeMillis();
-					while (context.uris.isEmpty()) 
+					while (context.storage.isEmpty()) 
 						if (System.currentTimeMillis() - start >=  DEFAULT_WORK_CHECK_DELAY)
 							break out;
 				}
@@ -135,9 +133,13 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 	public static abstract class Builder<Uri, R> extends Crawler.Builder<Uri, R> {
 		private int maxThreads;
 		
-		public Builder() {
-			super();
+		public Builder(Strategy strategy) {
+			super(strategy);
 			maxThreads = DEFAULT_MAX_THREADS;
+		}
+		
+		public Builder() {
+			this(Strategy.BREADTH_FIRST);
 		}
 		
 		public Builder<Uri, R> setMaxThreads(int maxThreads) {

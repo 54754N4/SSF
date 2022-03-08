@@ -10,17 +10,14 @@ import java.util.stream.Collectors;
 import org.openqa.selenium.By;
 
 import browser.common.Browser;
+import crawler.model.Context.Strategy;
 
 public abstract class WebCrawler extends Crawler<String> implements Closeable {
 	private Browser browser;
 	
-	public WebCrawler(Context<String> context, int maxDepth, Strategy strategy) {
-		super(context, maxDepth, strategy);
-		this.browser = createBrowser();
-	}
-
 	public WebCrawler(Context<String> context, int maxDepth) {
-		this(context, maxDepth, Strategy.BREADTH_FIRST);	// usually depth-first is bad for web crawling
+		super(context, maxDepth);
+		this.browser = createBrowser();
 	}
 	
 	protected abstract Browser createBrowser();
@@ -58,8 +55,12 @@ public abstract class WebCrawler extends Crawler<String> implements Closeable {
 	public static abstract class Builder<R> extends Crawler.Builder<String, R> {
 		private Supplier<Browser> browserSupplier;
 		
+		public Builder(Strategy strategy) {
+			super(strategy);
+		}
+		
 		public Builder() {
-			super();
+			this(Strategy.BREADTH_FIRST);
 		}
 		
 		public Builder<R> setBrowserSupplier(Supplier<Browser> browserSupplier) {

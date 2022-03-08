@@ -9,14 +9,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import crawler.model.Context;
+import crawler.model.Context.Strategy;
 import crawler.model.Crawler;
 
 public class FolderCrawler extends Crawler<String> {
 	// Set file walker max depth to 1 (since crawler has his own way of tracking depth anyways)
 	private static final int WALKER_MAX_DEPTH = 1;
 	
-	public FolderCrawler(Context<String> context, int maxDepth, Strategy strategy) {
-		super(context, maxDepth, strategy);
+	public FolderCrawler(Context<String> context, int maxDepth) {
+		super(context, maxDepth);
 	}
 	
 	@Override
@@ -30,9 +31,18 @@ public class FolderCrawler extends Crawler<String> {
 	}
 	
 	public static class Builder extends Crawler.Builder<String, FolderCrawler> {
+		
+		public Builder(Strategy strategy) {
+			super(strategy);
+		}
+		
+		public Builder() {
+			this(Strategy.BREADTH_FIRST);
+		}
+
 		@Override
 		public FolderCrawler build() {
-			return new FolderCrawler(getContext(), getMaxDepth(), getStrategy());
+			return new FolderCrawler(getContext(), getMaxDepth());
 		}
 	}
 }

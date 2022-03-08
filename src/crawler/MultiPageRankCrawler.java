@@ -5,17 +5,17 @@ import browser.common.Browser;
 import browser.common.Configurators;
 import browser.common.Options;
 import crawler.model.Context;
-import crawler.model.Crawler.Strategy;
 import crawler.model.MultiWebCrawler;
 import crawler.model.WebCrawler;
+import crawler.model.Context.Strategy;
 
 public class MultiPageRankCrawler extends MultiWebCrawler {
 	private PageRank pageRank;
 	private int optimisations;
 	private long duration;
 	
-	public MultiPageRankCrawler(Context<String> context, int maxDepth, int maxThreads, Strategy strategy, int optimisations, PageRank pageRank) {
-		super(context, maxDepth, maxThreads, strategy);
+	public MultiPageRankCrawler(Context<String> context, int maxDepth, int maxThreads, int optimisations, PageRank pageRank) {
+		super(context, maxDepth, maxThreads);
 		this.optimisations = optimisations;
 		this.pageRank = pageRank;
 	}
@@ -31,8 +31,8 @@ public class MultiPageRankCrawler extends MultiWebCrawler {
 	}
 	
 	@Override
-	protected WebCrawler create(Context<String> context, int maxDepth, Strategy strategy) {
-		return new PageRankCrawler(context, maxDepth, strategy, optimisations, pageRank) {
+	protected WebCrawler create(Context<String> context, int maxDepth) {
+		return new PageRankCrawler(context, maxDepth, optimisations, pageRank) {
 			@Override
 			protected Browser createBrowser() {
 				return MultiPageRankCrawler.this.createBrowser();
@@ -66,10 +66,14 @@ public class MultiPageRankCrawler extends MultiWebCrawler {
 		private int optimisations;
 		private PageRank pageRank;
 		
-		public Builder() {
-			super();
+		public Builder(Strategy strategy) {
+			super(strategy);
 			optimisations = PageRankCrawler.DEFAULT_OPTIMISATIONS;
 			pageRank = new PageRank();
+		}
+		
+		public Builder() {
+			this(Strategy.BREADTH_FIRST);
 		}
 		
 		public Builder setOptimisations(int optimisations) {
@@ -96,7 +100,6 @@ public class MultiPageRankCrawler extends MultiWebCrawler {
 				getContext(),
 				getMaxDepth(),
 				getMaxThreads(),
-				getStrategy(),
 				optimisations,
 				pageRank);
 		}

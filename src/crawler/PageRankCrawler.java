@@ -1,13 +1,16 @@
 package crawler;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import ads.common.Utils.Time;
 import browser.common.Browser;
-import browser.common.Options;
 import browser.common.Configurators;
+import browser.common.Options;
 import crawler.model.Context;
+import crawler.model.Context.Strategy;
 import crawler.model.WebCrawler;
 
 public class PageRankCrawler extends WebCrawler {
@@ -16,8 +19,8 @@ public class PageRankCrawler extends WebCrawler {
 	private PageRank pageRank;
 	private long duration;
 	
-	public PageRankCrawler(Context<String> context, int maxDepth, Strategy strategy, int optimisations, PageRank pageRank) {
-		super(context, maxDepth, strategy);
+	public PageRankCrawler(Context<String> context, int maxDepth, int optimisations, PageRank pageRank) {
+		super(context, maxDepth);
 		this.optimisations = optimisations;
 		this.pageRank = pageRank;
 	}
@@ -34,13 +37,12 @@ public class PageRankCrawler extends WebCrawler {
 	@Override
 	protected List<String> crawlFrontier(String uri) throws Exception {
 		List<String> urls = super.crawlFrontier(uri);
+		Map<String, Collection<String>> connections = pageRank.connections();
 		for (String child : urls) {
 			if (!child.trim().equals("")) {
-				pageRank.connections()
-					.putIfAbsent(uri, new ConcurrentSkipListSet<>());	// ignore duplicate links with set
-				pageRank.connections()
-					.get(uri)
-					.add(child);
+				// ignore duplicate links with set
+				connections.putIfAbsent(uri, new ConcurrentSkipListSet<>());
+				connections.get(uri).add(child);
 			}
 		}
 		return urls;
@@ -66,10 +68,14 @@ public class PageRankCrawler extends WebCrawler {
 		private int optimisations;
 		private PageRank pageRank;
 		
-		public Builder() {
-			super();
+		public Builder(Strategy strategy) {
+			super(strategy);
 			optimisations = DEFAULT_OPTIMISATIONS;
 			pageRank = new PageRank();
+		}
+		
+		public Builder() {
+			this(Strategy.BREADTH_FIRST);
 		}
 		
 		public Builder setOptimisations(int optimisations) {
@@ -95,7 +101,6 @@ public class PageRankCrawler extends WebCrawler {
 			return new PageRankCrawler(
 				getContext(),
 				getMaxDepth(),
-				getStrategy(),
 				optimisations,
 				pageRank);
 		}

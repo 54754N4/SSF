@@ -47,25 +47,13 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 public class Browser implements Closeable {
     public static final long DEFAULT_TIMEOUT = 15, DEFAULT_POLLING = 5;		// in seconds
     private RemoteWebDriver driver;
-    private WebDriverWait wait;
 
-    public Browser(RemoteWebDriver driver, @Nullable Long timeout) {
-        this.driver = driver;
-        if (timeout == null)
-        	timeout = DEFAULT_TIMEOUT;
-        wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
-    }
-    
     public Browser(RemoteWebDriver driver) {
-    	this(driver, null);
-    }
-    
-    public <K extends AbstractDriverOptions<?>> Browser(BrowserConfigurator<K> configurator, @Nullable Long timeout) {
-    	this(configurator.createDriver(), timeout);
+        this.driver = driver;
     }
     
     public <K extends AbstractDriverOptions<?>> Browser(BrowserConfigurator<K> configurator) {
-    	this(configurator, null);
+    	this(configurator.createDriver());
     }
     
     @Override
@@ -238,7 +226,7 @@ public class Browser implements Closeable {
     }
     
     public Alert waitForAlert() {
-    	return wait.until(ExpectedConditions.alertIsPresent());
+    	return waitFor().until(ExpectedConditions.alertIsPresent());
     }
     
     public Object prompt(String msg) {
@@ -336,9 +324,24 @@ public class Browser implements Closeable {
 
     /* Wait/delays handling */
 
+    /* This will slow all browser requests. Use with care or only
+     * if you know what you're doing. 
+     **/
     public Browser waitImplicitly(long timeout) {
     	driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(timeout));
     	return this;
+    }
+    
+    public WebDriverWait waitFor() {
+    	return waitFor(DEFAULT_TIMEOUT);
+    }
+    
+    public WebDriverWait waitFor(long seconds) {
+    	return waitFor(Duration.ofSeconds(seconds));
+    }
+    
+    public WebDriverWait waitFor(Duration duration) {
+    	return new WebDriverWait(driver, duration);
     }
     
     public WebElement waitGet(By by) {
@@ -350,7 +353,7 @@ public class Browser implements Closeable {
     }
     
     public <T> T waitUntil(ExpectedCondition<T> condition) {
-    	return wait.until(condition);
+    	return waitFor().until(condition);
     }
     
     public <V> V waitUntil(Function<? super WebDriver, V> isTrue) {
@@ -363,12 +366,12 @@ public class Browser implements Closeable {
     }
 
     public Browser waitFor(Function<? super WebDriver, Boolean> isTrue) {
-        wait.until(isTrue);
+        waitFor().until(isTrue);
         return this;
     }
 
     public Browser waitFor(By by, Collection<Consumer<WebElement>> consumers) {
-        WebElement element = wait.until(driver -> driver.findElement(by));
+        WebElement element = waitFor().until(driver -> driver.findElement(by));
         return handle(element, consumers);
     }
 
@@ -398,7 +401,7 @@ public class Browser implements Closeable {
     }
 
     public Browser waitUntilLoaded() {
-    	wait.until(pageLoadedCondition());
+    	waitFor().until(pageLoadedCondition());
         return this;
     }
 
@@ -441,7 +444,7 @@ public class Browser implements Closeable {
     }
 
     public Browser scrollTo(By target) {
-        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(target));
+        WebElement element = waitFor().until(ExpectedConditions.presenceOfElementLocated(target));
         return scrollTo(element);
     }
 
@@ -461,7 +464,7 @@ public class Browser implements Closeable {
     }
 
     public Browser scrollToJS(By target) {
-        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(target));
+        WebElement element = waitFor().until(ExpectedConditions.presenceOfElementLocated(target));
         return scrollToJS(element);
     }
 
@@ -498,7 +501,7 @@ public class Browser implements Closeable {
     }
 
     public Browser scrollIntoView(By target) {
-        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(target));
+        WebElement element = waitFor().until(ExpectedConditions.presenceOfElementLocated(target));
         return scrollIntoView(element);
     }
 
@@ -507,7 +510,7 @@ public class Browser implements Closeable {
             ScrollOptions.Behavior behavior,
             ScrollOptions.Block block,
             ScrollOptions.Inline inline) {
-        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(target));
+        WebElement element = waitFor().until(ExpectedConditions.presenceOfElementLocated(target));
         return scrollIntoView(element, behavior, block, inline);
     }
 
@@ -535,14 +538,14 @@ public class Browser implements Closeable {
     }
 
     public Browser hover(By target) {
-        return hover(wait.until(ExpectedConditions.presenceOfElementLocated(target)));
+        return hover(waitFor().until(ExpectedConditions.presenceOfElementLocated(target)));
     }
 
     public Browser hoverJS(By target) {
         String code = "var evObj = document.createEvent('MouseEvents');" +
                 "evObj.initMouseEvent(\"mouseover\",true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);" +
                 "arguments[0].dispatchEvent(evObj);";
-        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(target));
+        WebElement element = waitFor().until(ExpectedConditions.presenceOfElementLocated(target));
         execute(code, element);
         return this;
     }

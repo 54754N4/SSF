@@ -1,12 +1,12 @@
 package crawler.model;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import crawler.model.Context.Match;
+import crawler.model.Context.Strategy;
 
 /**
  * A Crawler is a thread that can search, up to a specified depth, 
@@ -16,25 +16,21 @@ import crawler.model.Context.Match;
  * @param <Uri> - anything that can be retrieved by crawling 
  */
 public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
-	/* Constants */
-	public static enum Strategy { BREADTH_FIRST, DEPTH_FIRST }
 	public static final int DEFAULT_MAX_DEPTH = 1;
 	public static final String 
 		PRE_PHASE = "preCrawl",
 		CRAWL_PHASE = "crawl",
 		POST_PHASE = "postCrawl";
-
+	
 	/* Attributes */
 	protected final int maxDepth;
-	protected final Strategy strategy;
 	protected final Context<Uri> context;
 	
-	public Crawler(Context<Uri> context, int maxDepth, Strategy strategy) {
+	public Crawler(Context<Uri> context, int maxDepth) {
 		if (maxDepth < 0)
 			throw new IllegalArgumentException("Max depth can only be strict positive integers");
 		this.context = context;
 		this.maxDepth = maxDepth;
-		this.strategy = strategy;
 	}
 	
 	/**
@@ -48,7 +44,7 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 	protected void preCrawl() throws Exception {
 		logln(
 			"Starting crawl with %s of %d",
-			strategy == Strategy.DEPTH_FIRST ? "max depth" : "breadth",
+			context.getStrategy() == Strategy.DEPTH_FIRST ? "max depth" : "breadth",
 			maxDepth);
 	}
 	
@@ -83,45 +79,23 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 		return null;
 	}
 	
-	private void executeStrategy() throws Exception {
-		StrategyMethod<Uri> strategy = this.strategy == Strategy.BREADTH_FIRST ?
-				this::breadthFirst :
-				this::depthFirst;
-		Match<Uri> match;
-		while ((match = context.uris.poll()) != null)
-			strategy.execute(match);
-	}
-
-	/* Crawling strategies */
-	
-	protected void breadthFirst(Match<Uri> match) throws Exception {
-		if (!handleMatch(match))
-			return;
-		for (Uri child : crawlFrontier(match.getUri()))
-			if (match.getDepth() < maxDepth)
-				context.push(match.getDepth() + 1, child);
+	private final void executeStrategy() throws Exception {
+		while (!context.storage.isEmpty()) {
+			Match<Uri> element = context.storage().pop();
+			if (!validMatch(element))
+				continue;
+			onVisit(element.getUri());
+			int nextDepth = element.getDepth() + 1;
+			if (nextDepth > maxDepth)
+				continue;
+			for (Uri child : crawlFrontier(element.getUri()))
+				context.storage().push(Match.of(nextDepth, child));
+		}
 	}
 	
-	protected void depthFirst(Match<Uri> match) throws Exception {
-		if (!handleMatch(match))
-			return;
-		depthFirstPush(match);
-	}
-	
-	private void depthFirstPush(Match<Uri> match) throws Exception {
-		if (match.getDepth() >= maxDepth)
-			return;
-		Iterator<Uri> iterator = crawlFrontier(match.getUri()).iterator();
-		if (!iterator.hasNext())
-			return;
-		Match<Uri> firstChild = Match.of(match.getDepth() + 1, iterator.next());
-		if (!handleMatch(firstChild))
-			return;
-		depthFirstPush(firstChild);
-		iterator.forEachRemaining(child -> context.push(match.getDepth()+1, child));
-	}
-	
-	protected boolean handleMatch(Match<Uri> match) throws Exception {
+	private final boolean validMatch(Match<Uri> match) {
+		if (match == null)
+			return false;
 		Uri uri = match.getUri();
 		boolean blacklisted = context.isBlacklisted(uri),
 				visited = context.wasVisited(uri), 
@@ -135,27 +109,23 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 				logln("Ignored: %s (filtered)", uri);
 			return false;
 		}
-		logln("Visiting (%d/%d): %s", context.count(), context.uris.size(), uri);
+		logln("Visiting (%d/%d): %s", context.count(), context.storage().size(), uri);
 		context.markVisited(uri);
-		onVisit(uri);
 		context.increment();
 		return true;
 	}
 	
-	@FunctionalInterface
-	public static interface StrategyMethod<Uri> {
-		void execute(Match<Uri> uri) throws Exception;
-	} 
-	
 	public static abstract class Builder<Uri, R> {
 		private Context<Uri> context;
 		private int maxDepth;
-		private Strategy strategy;
+		
+		public Builder(Strategy strategy) {
+			context = Context.create(strategy);
+			maxDepth = DEFAULT_MAX_DEPTH;
+		}
 		
 		public Builder() {
-			context = Context.create();
-			maxDepth = DEFAULT_MAX_DEPTH;
-			strategy = Strategy.BREADTH_FIRST;
+			this(Strategy.BREADTH_FIRST);
 		}
 		
 		public Builder<Uri, R> asContext(Consumer<Context<Uri>> consumer) {
@@ -179,15 +149,6 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 		
 		public int getMaxDepth() {
 			return maxDepth;
-		}
-		
-		public Builder<Uri, R> setStrategy(Strategy strategy) {
-			this.strategy = strategy;
-			return this;
-		}
-		
-		public Strategy getStrategy() {
-			return strategy;
 		}
 		
 		public abstract R build();
