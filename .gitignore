@@ -2,5 +2,6 @@
 bin/*
 *.class
 
+/.gradle/
 /bin/
 /target/
