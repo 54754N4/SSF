@@ -2,7 +2,6 @@ package crawler.model;
 
 import java.io.Closeable;
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -21,33 +20,22 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 	
 	protected final int maxDepth;
 	protected final Context<Uri> context;
-	protected final List<Crawler<Uri>> crawlers;
 	
 	private final int maxThreads;
 	private final ExecutorService executor;
-	private CountDownLatch latch;
+	private CountDownLatch startLatch, endLatch;
 	private AtomicInteger terminated;
+	private boolean first;
 	
 	public MultiCrawler(Context<Uri> context, int maxDepth, int maxThreads) {
 		this.maxDepth = maxDepth;
 		this.context = context;
 		this.maxThreads = maxThreads;
-		crawlers = new ArrayList<>();
 		executor = Executors.newFixedThreadPool(maxThreads+1);	// +1 to account for current crawler
+		first = true;
 	}
 	
 	protected abstract Crawler<Uri> create(Context<Uri> context, int maxDepth);
-	
-	@Override
-	public void close() {
-		executor.shutdown();
-	}
-	
-	/* Accessors */
-	
-	public List<Crawler<Uri>> getCrawlers() {
-		return crawlers;
-	}
 	
 	/* Threading methods */
 	
@@ -63,14 +51,14 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 	
 	protected void preCrawl() throws Exception {
 		terminated = new AtomicInteger();
-		latch = new CountDownLatch(maxThreads);
+		startLatch = new CountDownLatch(maxThreads);
+		endLatch = new CountDownLatch(maxThreads);
 		logln("Starting mutli-threaded crawl with %s of %d", 
 				context.getStrategy() == Strategy.DEPTH_FIRST ? "max depth" : "breadth", 
 				maxDepth);
 	}
 	
 	protected void postCrawl() throws Exception {
-		latch.await();
 		logln("Finished multi-threaded crawl.");
 	}
 	
@@ -80,54 +68,63 @@ public abstract class MultiCrawler<Uri> implements UncaughtExceptionHandler, Cal
 		preCrawl();
 		executor.invokeAll(callables);
 		postCrawl();
+		endLatch.await();
 		return null;
 	}
 	
 	private List<Callable<Void>> spawnThreads() throws InterruptedException {
-		return Stream.generate(() -> context)
-			.limit(maxThreads)					// duplicate context per threads
-			.map(this::trackCrawlerCreation)
+		return Stream.generate(() -> create(context, maxDepth))
+			.limit(maxThreads)
 			.map(this::convertToWorker)
 			.collect(Collectors.toList());
 	}
 	
-	private final Crawler<Uri> trackCrawlerCreation(Context<Uri> context) {
-		Crawler<Uri> crawler = create(context, maxDepth);
-		crawlers.add(crawler);
-		return crawler;
-	}
-	
 	private final Callable<Void> convertToWorker(Crawler<Uri> crawler) {
+		/* Forces one crawler/worker to gather enough tasks for 
+		 * everyone before releasing all parked/awaiting workers.
+		 */
+		if (first) {
+			crawler.addPreVisit(() -> startLatch.countDown());
+			first = false;
+		} else
+			crawler.addPreExecute(() -> startLatch.await());
 		return new Callable<>() {
 			@Override
 			public Void call() throws Exception {
+				crawler.preCrawl();
 				// Keep crawling until no more work
 				out: while (true) {
 					// Call crawl method in worker thread's context
-					try { crawler.call(); } 
+					try { crawler.executeStrategy(); }
 					catch (Exception e) {
 						crawler.logln("Killed thread that triggered error %s", this, e.getMessage());
 						e.printStackTrace();
-						latch.countDown();	// trip latch on error as well
+						endLatch.countDown();	// trip latch on error as well
 						return null;
 					}
+					// Retry checking for new tasks (using non-blocking sleep)
 					crawler.logln("Checking for extra tasks before stopping...", crawler);
-					// Retry checking for new tasks (uses non-blocking sleep)
 					long start = System.currentTimeMillis();
 					while (context.storage.isEmpty()) 
 						if (System.currentTimeMillis() - start >=  DEFAULT_WORK_CHECK_DELAY)
 							break out;
 				}
 				// Worker thread has no more work and can terminate 
-				latch.countDown();
+				endLatch.countDown();
 				crawler.logln(
 					"Thread terminated (%d/%d): %s",
 					terminated.incrementAndGet(),
 					maxThreads,
 					crawler);
+				crawler.postCrawl();
 				return null;
 			}
 		};
+	}
+	
+	@Override
+	public void close() {
+		executor.shutdown();
 	}
 	
 	public static abstract class Builder<Uri, R> extends Crawler.Builder<Uri, R> {

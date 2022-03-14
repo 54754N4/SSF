@@ -1,5 +1,6 @@
 package crawler.model;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
@@ -25,12 +26,17 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 	/* Attributes */
 	protected final int maxDepth;
 	protected final Context<Uri> context;
+	protected final List<Action> preExecute, postExecute, preVisit, postVisit;
 	
 	public Crawler(Context<Uri> context, int maxDepth) {
 		if (maxDepth < 0)
 			throw new IllegalArgumentException("Max depth can only be strict positive integers");
 		this.context = context;
 		this.maxDepth = maxDepth;
+		preExecute = new ArrayList<>();
+		postExecute = new ArrayList<>();
+		preVisit = new ArrayList<>();
+		postVisit = new ArrayList<>();
 	}
 	
 	/**
@@ -38,21 +44,6 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 	 * crawl frontier. 
 	 */
 	protected abstract List<Uri> crawlFrontier(Uri uri) throws Exception;
-	
-	/* Lifecycle hooks */
-	
-	protected void preCrawl() throws Exception {
-		logln(
-			"Starting crawl with %s of %d",
-			context.getStrategy() == Strategy.DEPTH_FIRST ? "max depth" : "breadth",
-			maxDepth);
-	}
-	
-	protected void onVisit(Uri uri) throws Exception {}
-	
-	protected void postCrawl() throws Exception {
-		logln("Finished crawling.");
-	}
 	
 	/* Crawling methods */
 	
@@ -79,8 +70,10 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 		return null;
 	}
 	
-	private final void executeStrategy() throws Exception {
+	public final void executeStrategy() throws Exception {
+		preExecute();
 		while (!context.storage.isEmpty()) {
+			preVisit();
 			Match<Uri> element = context.storage().pop();
 			if (!validMatch(element))
 				continue;
@@ -90,7 +83,9 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 				continue;
 			for (Uri child : crawlFrontier(element.getUri()))
 				context.storage().push(Match.of(nextDepth, child));
+			postVisit();
 		}
+		postExecute();
 	}
 	
 	private final boolean validMatch(Match<Uri> match) {
@@ -109,11 +104,83 @@ public abstract class Crawler<Uri> implements Callable<Void>, Loggeable {
 				logln("Ignored: %s (filtered)", uri);
 			return false;
 		}
+		return true;
+	}
+	
+	/* Lifecycle hooks */
+	
+	protected void preCrawl() throws Exception {
+		logln(
+			"Starting crawl with %s of %d",
+			context.getStrategy() == Strategy.DEPTH_FIRST ? "max depth" : "breadth",
+			maxDepth);
+	}
+	
+	protected void onVisit(Uri uri) throws Exception {
 		logln("Visiting (%d/%d): %s", context.count(), context.storage().size(), uri);
 		context.markVisited(uri);
 		context.increment();
-		return true;
 	}
+	
+	protected void postCrawl() throws Exception {
+		logln("Finished crawling.");
+	}
+	
+	/* Visit and Execute hooks */
+	
+	private final void preExecute() throws Exception {
+		for (Action action : preExecute)
+			action.run();
+	}
+	
+	private final void postExecute() throws Exception {
+		for (Action action : postExecute)
+			action.run();
+	}
+	
+	public void addPreExecute(Action runnable) {
+		preExecute.add(runnable);
+	}
+	
+	public void addPostExecute(Action runnable) {
+		postExecute.add(runnable);
+	}
+	
+	public void clearPreExecute() {
+		preExecute.clear();
+	}
+	
+	public void clearPostExecute() {
+		postExecute.clear();
+	}
+	
+	private final void preVisit() throws Exception {
+		for (Action action : preVisit)
+			action.run();
+	}
+	
+	private final void postVisit() throws Exception {
+		for (Action action : postVisit)
+			action.run();
+	}
+	
+	public void addPreVisit(Action runnable) {
+		preVisit.add(runnable);
+	}
+	
+	public void addPostVisit(Action runnable) {
+		postVisit.add(runnable);
+	}
+	
+	public void clearPreVisit() {
+		preVisit.clear();
+	}
+	
+	public void clearPostVisit() {
+		postVisit.clear();
+	}
+	
+	/* Builder class */
 	
 	public static abstract class Builder<Uri, R> {
 		private Context<Uri> context;

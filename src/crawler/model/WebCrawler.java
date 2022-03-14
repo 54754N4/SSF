@@ -4,7 +4,6 @@ import java.io.Closeable;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.openqa.selenium.By;
@@ -17,10 +16,29 @@ public abstract class WebCrawler extends Crawler<String> implements Closeable {
 	
 	public WebCrawler(Context<String> context, int maxDepth) {
 		super(context, maxDepth);
-		this.browser = createBrowser();
 	}
 	
 	protected abstract Browser createBrowser();
+	
+	@Override
+	protected void preCrawl() throws Exception {
+		if (browser == null)
+			browser = createBrowser();
+	}
+	
+	@Override
+	protected void postCrawl() throws Exception {
+		super.postCrawl();
+		close();
+	}
+	
+	@Override
+	public void close() {
+		if (browser != null) {
+			browser.close();
+			browser = null;
+		}
+	}
 	
 	@Override
 	protected List<String> crawlFrontier(String uri) throws Exception {
@@ -46,30 +64,13 @@ public abstract class WebCrawler extends Crawler<String> implements Closeable {
 		}
 	}
 	
-	@Override
-	public void close() {
-		if (browser != null) 
-			browser.close();
-	}
-	
 	public static abstract class Builder<R> extends Crawler.Builder<String, R> {
-		private Supplier<Browser> browserSupplier;
-		
 		public Builder(Strategy strategy) {
 			super(strategy);
 		}
 		
 		public Builder() {
 			this(Strategy.BREADTH_FIRST);
-		}
-		
-		public Builder<R> setBrowserSupplier(Supplier<Browser> browserSupplier) {
-			this.browserSupplier = browserSupplier;
-			return this;
-		}
-		
-		public Supplier<Browser> getBrowserSupplier() {
-			return browserSupplier;
 		}
 	}
 }

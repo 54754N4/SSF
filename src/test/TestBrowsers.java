@@ -10,8 +10,8 @@ import browser.common.Configurators;
 
 public class TestBrowsers {
 	public static void main(String[] args) throws InterruptedException {
-//		testFirefox();
-		testChrome();
+		testFirefox();
+//		testChrome();
 	}
 	
 	public static void testFirefox() throws InterruptedException {

@@ -25,14 +25,6 @@ public abstract class MultiWebCrawler extends MultiCrawler<String> {
 		};
 	}
 	
-	@Override
-	public void close() {
-		super.close();
-		crawlers.stream()
-			.map(WebCrawler.class::cast)
-			.forEach(WebCrawler::close);
-	}
-	
 	/**
 	 * We only apply a restriction to all crawler builders that depend on this class.
 	 * Restriction: Built crawler needs to be of type MultiWebCrawler

@@ -41,7 +41,6 @@ public class MultiPageRankCrawler extends MultiWebCrawler {
 			/* We want the multi-threaded crawler's postCrawl 
 			 * to do the page-ranking algorithm instead of each
 			 * worker */
-			@Override protected void preCrawl() {}
 			@Override protected void postCrawl() {}
 		};
 	}
@@ -60,6 +59,7 @@ public class MultiPageRankCrawler extends MultiWebCrawler {
 			.forEach((key, val) -> logln("%s -> %f", key.toString(), val));
 		duration = System.currentTimeMillis() - duration;
 		logln("Finished after %s%n", Time.fromMillis(duration));
+		close();
 	}
 	
 	public static class Builder extends MultiWebCrawler.Builder<MultiPageRankCrawler> {

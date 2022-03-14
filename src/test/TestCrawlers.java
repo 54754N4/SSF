@@ -44,7 +44,7 @@ public class TestCrawlers {
 						"*.bytedance.com",
 						"*.tiktok.com"
 					))
-				.setMaxDepth(2)
+				.setMaxDepth(1)
 				.build()) {
 			crawler.crawl();
 		}
@@ -62,7 +62,7 @@ public class TestCrawlers {
 						"*.bytedance.com",
 						"*.tiktok.com"
 					))
-				.setMaxDepth(3)
+				.setMaxDepth(2)
 				.build()) {
 			crawler.crawl();
 		}
