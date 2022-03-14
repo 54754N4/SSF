@@ -44,9 +44,10 @@ import org.openqa.selenium.support.ui.WebDriverWait;
  * to ease with chained calls/actions.
  * Docs: https://www.selenium.dev/documentation/en/webdriver/
  */
-public class Browser implements Closeable {
+public class Browser implements Closeable, Cloneable {
     public static final long DEFAULT_TIMEOUT = 15, DEFAULT_POLLING = 5;		// in seconds
     private RemoteWebDriver driver;
+    private BrowserConfigurator<? extends AbstractDriverOptions<?>> configurator;
 
     public Browser(RemoteWebDriver driver) {
         this.driver = driver;
@@ -54,6 +55,14 @@ public class Browser implements Closeable {
     
     public <K extends AbstractDriverOptions<?>> Browser(BrowserConfigurator<K> configurator) {
     	this(configurator.createDriver());
+    	this.configurator = configurator;
+    }
+    
+    @Override
+    public Browser clone() {
+    	if (configurator == null)
+    		throw new IllegalCallerException("This browser wasn't created through a configurator");
+    	return new Browser(configurator);
     }
     
     @Override
