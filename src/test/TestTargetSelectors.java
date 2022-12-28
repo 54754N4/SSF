@@ -3,6 +3,8 @@ package test;
 import java.util.Iterator;
 import java.util.concurrent.ExecutionException;
 
+import org.openqa.selenium.By;
+
 import crawler.model.Context.Strategy;
 import targets.CrawlSelector;
 import targets.MultiCrawlSelector;
@@ -44,11 +46,14 @@ public class TestTargetSelectors {
 	
 	public static NextSelector testNextSelector() {
 		return new NextSelector.Builder()
+				.setInitialUrl("https://www.lodgis.com/en/paris,long-term-rentals/")
 				.setChecker(browser -> {
-					return true;	// TODO check selenium docs for expected conditions
+					return browser.findElement(By.cssSelector(".page-item.page-item-pager")) != null;
 				})
 				.setNextSelector(browser -> {
-					return "";
+					return browser.findElement(By.cssSelector(".page-item.page-item-pager"))
+							.findElement(By.tagName("a"))
+							.getAttribute("href");
 				})
 				.build();
 	}

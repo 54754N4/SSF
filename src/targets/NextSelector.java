@@ -27,7 +27,9 @@ public class NextSelector implements TargetSelector, Closeable {
 
 	@Override
 	public String next() {
-		return nextSelector.apply(browser);
+		String next = nextSelector.apply(browser);
+		browser.visit(next);
+		return next;
 	}
 	
 	@Override
@@ -71,7 +73,7 @@ public class NextSelector implements TargetSelector, Closeable {
 			if (browser == null) // By default, use firefox
 				browser = new Browser(Configurators.firefox()
 					.config(Options.FIREFOX::defaultSettings)
-//					.config(Options.FIREFOX::debugging)
+					.config(Options.FIREFOX::debugging)		// TODO REMOVE WHEN DONE
 					.build());
 			return new NextSelector(initialUrl, checker, nextSelector, browser);
 		}
